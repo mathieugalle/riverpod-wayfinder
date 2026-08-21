@@ -6,10 +6,22 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.3.0]
+
 ### Added
 
+- **`Shift+F12` ("Find All References") now works in reverse too.** From a hand-written `@riverpod` declaration (a function or class), it lists every usage of the *generated* provider identifier it produces, elsewhere in the workspace - "who uses this?". Prefers the Dart analyzer's own references (accurate, scope-aware) when available, falling back to a plain word-boundary text scan across `**/*.dart` otherwise. `.g.dart` locations are never included in what this extension itself contributes - see Known issues for a related aggregation caveat (the Dart extension's own contribution can still surface a `.g.dart` line when generated code genuinely calls back into your hand-written symbol, e.g. `PackageMetrics create() => PackageMetrics();` - not something this extension can suppress).
 - Fixture and unit test proving resolution works with a completely arbitrary, made-up suffix (`widgetToto`, ending in `"Toto"`) — not just `"Provider"` or `"Controller"` — confirming no suffix is hardcoded anywhere in the resolver.
 - Fixtures and unit tests validating **family (parameterized) providers**, both function-based (`@riverpod Future<String> weather(Ref ref, {required String city})`) and class-based (`@riverpod class CityForecast extends _$CityForecast { build(String city) }`). Family providers generate a different shape (`const xProvider = XFamily();` pointing at a wrapper class, instead of the plain `final xProvider = ...Provider<...>.internal(...)`) - confirmed working without any special-casing, plus a regression test guarding against the generated `XFamily`/`XProvider` wrapper class names being confused with the real (differently-cased) provider constant.
+
+### Changed
+
+- Replaced `console.log` and the `riverpod-wayfinder.enableLogging` setting with a proper `vscode.LogOutputChannel` (a "Riverpod Wayfinder" channel in the Output panel). `console.log` wasn't reliably visible outside of a debug session; the new channel always is. Verbosity is now controlled the standard VSCode way (the channel's own log level - gear icon in the Output panel, or "Developer: Set Log Level..."), and actual errors (a file that failed to read, a failed analyzer call) are logged distinctly at error level, always visible, instead of being silently dropped or mixed in with routine step-by-step tracing.
+- Minimum supported VSCode version raised to 1.74.0 (required by the `LogOutputChannel` API).
+
+### Fixed
+
+- A `.g.dart`/`.dart` file that fails to read (deleted or renamed between being listed by `findFiles` and read) no longer silently aborts the whole lookup with an uncaught exception - it's skipped and logged as an error instead.
 
 ## [0.2.2]
 

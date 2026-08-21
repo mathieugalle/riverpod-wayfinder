@@ -3,7 +3,7 @@
   "displayName": "Riverpod Wayfinder",
   "publisher": "mathieugalle",
   "description": "Jump straight from a Riverpod provider usage (e.g. xxxProvider) to the hand-written class or function you actually wrote - not the generated .g.dart file. Handles files with multiple providers correctly.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/mathieugalle/riverpod-wayfinder.git"
@@ -14,7 +14,7 @@
   "homepage": "https://github.com/mathieugalle/riverpod-wayfinder#readme",
   "icon": "icon.png",
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Programming Languages",
@@ -50,17 +50,7 @@
         "mac": "cmd+alt+d",
         "when": "editorTextFocus && editorLangId == dart"
       }
-    ],
-    "configuration": {
-      "title": "Riverpod Wayfinder",
-      "properties": {
-        "riverpod-wayfinder.enableLogging": {
-          "type": "boolean",
-          "default": false,
-          "description": "Log each resolution decision (word matched, candidate .g.dart files, inferred symbol, target line) to the Debug Console for troubleshooting."
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

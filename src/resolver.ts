@@ -43,6 +43,11 @@ function defaultOptions(overrides: ResolveOptions): Required<ResolveOptions> {
   };
 }
 
+/** True for any `*.g.dart` path - riverpod-wayfinder never surfaces generated code to the user. */
+export function isGeneratedDartFile(filePath: string): boolean {
+  return /\.g\.dart$/.test(filePath);
+}
+
 export function toPascalCase(input: string): string {
   return input.replace(/(^|_)(\w)/g, (_match, _sep, c: string) => c.toUpperCase());
 }
@@ -240,4 +245,150 @@ export function resolveProviderTarget(
 
   log(`"${word}" was not found in any .g.dart candidate.`);
   return null;
+}
+
+export interface GeneratedProviderReference {
+  /** The generated provider identifier (e.g. "weatherProvider"). */
+  name: string;
+  /** Absolute path of the .g.dart file containing the generated declaration. */
+  gDartPath: string;
+  /** Zero-based line of the generated declaration within that file. */
+  line: number;
+  /** Zero-based character offset of the identifier's start on that line. */
+  character: number;
+}
+
+/**
+ * Given a hand-written source file, find the `.g.dart` file it declares via
+ * `part '<name>.g.dart';` - the counterpart to the `part of '<source>'`
+ * directive `resolveProviderTarget` reads in the other direction.
+ */
+export function findPairedGDartPath(sourceContent: string, sourceFilePath: string): string | null {
+  const partMatch = sourceContent.match(/^part\s+['"](.+\.g\.dart)['"]\s*;/m);
+  if (!partMatch) {
+    return null;
+  }
+  return path.resolve(path.dirname(sourceFilePath), partMatch[1]);
+}
+
+/**
+ * Reverse of `findProviderForClassName`: given the hand-written class/function
+ * name, find the GENERATED provider identifier riverpod_generator produced
+ * for it (e.g. "weather" -> "weatherProvider"), plus its character offset in
+ * the `.g.dart` content so a caller can build a `Position` pointing at it.
+ *
+ * Handles both declaration shapes generator output uses:
+ *   `final xProvider = ...`                (plain provider)
+ *   `const xProvider = XFamily();`         (family/parameterized provider)
+ */
+export function findGeneratedProviderName(
+  gDartContent: string,
+  className: string
+): { name: string; offset: number } | null {
+  const providerForRegex = new RegExp(`@ProviderFor\\(${escapeRegExp(className)}\\)`, 'g');
+  const declRegex = /\b(?:final|const)\s+(\w+)\s*=/;
+
+  let match: RegExpExecArray | null = providerForRegex.exec(gDartContent);
+  while (match !== null) {
+    const searchFrom = match.index + match[0].length;
+    const declMatch = declRegex.exec(gDartContent.slice(searchFrom));
+    if (declMatch) {
+      return {
+        name: declMatch[1],
+        offset: searchFrom + declMatch.index + declMatch[0].indexOf(declMatch[1]),
+      };
+    }
+    match = providerForRegex.exec(gDartContent);
+  }
+
+  return null;
+}
+
+function offsetToLineAndCharacter(content: string, offset: number): { line: number; character: number } {
+  const before = content.slice(0, offset).split('\n');
+  return { line: before.length - 1, character: before[before.length - 1].length };
+}
+
+/**
+ * Reverse of `resolveProviderTarget`: given the hand-written declaration
+ * clicked in a source `.dart` file (e.g. "weather", "PackageMetrics"), find
+ * where its GENERATED provider identifier (e.g. "weatherProvider") is
+ * declared in the paired `.g.dart` file - so a caller can search for usages
+ * of *that* identifier across the workspace ("who uses this provider?").
+ */
+export function resolveGeneratedProviderReference(
+  sourceContent: string,
+  sourceFilePath: string,
+  className: string,
+  options: ResolveOptions = {}
+): GeneratedProviderReference | null {
+  const { fileExists, readFile, log } = defaultOptions(options);
+
+  if (!className) {
+    return null;
+  }
+
+  if (findDeclarationLine(sourceContent, className) === null) {
+    log(`"${className}" is not an @riverpod-annotated declaration in this file; nothing to reverse.`);
+    return null;
+  }
+
+  const gDartPath = findPairedGDartPath(sourceContent, sourceFilePath);
+  if (!gDartPath) {
+    log('No "part \'*.g.dart\';" directive found in this file.');
+    return null;
+  }
+
+  if (!fileExists(gDartPath)) {
+    log(`Paired .g.dart file does not exist: ${gDartPath}`);
+    return null;
+  }
+
+  const gDartContent = readFile(gDartPath);
+  const found = findGeneratedProviderName(gDartContent, className);
+  if (!found) {
+    log(`No generated provider identifier found for "${className}" in ${gDartPath}`);
+    return null;
+  }
+
+  const { line, character } = offsetToLineAndCharacter(gDartContent, found.offset);
+  log(`"${className}" generates "${found.name}" at ${gDartPath}:${line + 1}`);
+
+  return { name: found.name, gDartPath, line, character };
+}
+
+export interface TextReference {
+  filePath: string;
+  line: number;
+  character: number;
+}
+
+/**
+ * Plain word-boundary text scan for every occurrence of `word` across a set
+ * of already-read files. Used as a fallback for "who uses this provider?"
+ * when the Dart analyzer isn't available to answer precisely (see
+ * `resolveGeneratedProviderReference`) - trades precision (this can match
+ * inside comments or string literals) for having no dependency on the Dart
+ * extension being installed and active.
+ */
+export function findWordOccurrences(
+  word: string,
+  files: { path: string; content: string }[]
+): TextReference[] {
+  const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'g');
+  const results: TextReference[] = [];
+
+  for (const file of files) {
+    const lines = file.content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      regex.lastIndex = 0;
+      let match: RegExpExecArray | null = regex.exec(lines[i]);
+      while (match !== null) {
+        results.push({ filePath: file.path, line: i, character: match.index });
+        match = regex.exec(lines[i]);
+      }
+    }
+  }
+
+  return results;
 }

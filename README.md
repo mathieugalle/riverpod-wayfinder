@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder removes that detour. It reads the `.g.dart` file for you, fig
 - Supports both `@riverpod class Foo extends _$Foo` and `@riverpod ReturnType foo(Ref ref)`.
 - No filename convention required — matches by content, so `foo.providers.dart` / `foo.providers.g.dart` and plain `foo.dart` / `foo.g.dart` both work.
 - No provider naming convention required either — works whether your generated identifiers end in `Provider`, `Controller`, or anything else your team uses, wherever `@riverpod` codegen itself works.
-- Optional debug logging (`riverpod-wayfinder.enableLogging`) showing every resolution decision.
+- **`Shift+F12` (Find All References)** on a hand-written `@riverpod` declaration — lists every usage of the *generated* provider it produces elsewhere in the workspace (`.g.dart` locations are never shown). Prefers the Dart analyzer's own references when available, falling back to a text scan otherwise.
+- Step-by-step resolution tracing in the **"Riverpod Wayfinder" Output channel** for troubleshooting - see [Troubleshooting](#troubleshooting) below.
 
 ## Install
 
@@ -43,7 +44,7 @@ Not yet published to a marketplace — grab the `.vsix` from the [Releases](../.
 Or from the command line:
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## Usage
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // and v
 
 If you don't want to pick every time, use **Go to Implementation** (`Ctrl+F12` / `Cmd+F12`) instead — a separate gesture the Dart extension doesn't contribute to, so it's uncontested and always jumps straight to the hand-written source.
 
+### Why does `Shift+F12` ("Find All References") sometimes still show a `.g.dart` location?
+
+Same root cause as the `Ctrl+Click` picker above: VSCode aggregates every registered `ReferenceProvider`, and Riverpod Wayfinder's own contribution never includes a `.g.dart` location — but the official Dart extension's contribution can. If your generated code genuinely calls back into your hand-written symbol (which it usually does at least once, e.g. `PackageMetrics create() => PackageMetrics();` in a class-based provider's generated file), that's a real reference from Dart's point of view, and Dart's `ReferenceProvider` reports it correctly. There's no supported way to filter another extension's contribution out of the merged list.
+
 ### How it works
 
 1. Finds the `.g.dart` file that contains the clicked provider
@@ -85,23 +90,27 @@ If you don't want to pick every time, use **Go to Implementation** (`Ctrl+F12` /
 
 ## Requirements
 
-- VSCode 1.60.0+ (also works in VSCode-based editors like Cursor)
+- VSCode 1.74.0+ (also works in VSCode-based editors like Cursor)
 - The [Dart extension](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code) (for `.g.dart` generation and everyday Dart support)
 
-## Settings
+## Troubleshooting
 
-| Setting | Default | Description |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | Log every resolution decision (candidate `.g.dart` files checked, inferred class/function name, resolved target line) to the Debug Console. |
+Riverpod Wayfinder logs every resolution decision (candidate `.g.dart` files checked, inferred class/function name, resolved target line, and any errors) to its own **"Riverpod Wayfinder"** channel in the Output panel:
+
+1. **View → Output**, then pick **"Riverpod Wayfinder"** from the channel dropdown.
+2. Step-by-step tracing is hidden by default. To see it, click the gear icon in that channel's toolbar (or run **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"**) and set the level to **Debug** or **Trace**.
+3. Errors (a file that couldn't be read, a failed analyzer call, ...) always show, regardless of that level.
 
 ## Known issues
 
 - Relies on the `.g.dart` file's `part of` statement to find the source file — unusual codegen setups may not resolve.
 - Class/function name inference uses a casing heuristic (uppercase first letter → class, lowercase → function); hand-written code that breaks Dart naming conventions may not resolve correctly.
+- `Shift+F12` can still show a `.g.dart` location contributed by the Dart extension itself — see the FAQ above, not something this extension can suppress.
+- The `Shift+F12` text-scan fallback (used when the Dart analyzer returns no results) is a plain word-boundary match — it can't tell a real usage from an identical name inside a comment or string literal.
 
 ## Roadmap
 
-This extension focuses on one thing — reliable navigation — but there's a lot more Riverpod friction that no existing extension addresses well yet: reverse "find all watch/read sites" for a provider, a workspace health-check command, dependency graphs, codegen-migration helpers, and more. See [ROADMAP.md](ROADMAP.md) for the running list of ideas — contributions and votes welcome.
+This extension focuses on one thing — reliable navigation — but there's a lot more Riverpod friction that no existing extension addresses well yet: a workspace health-check command, dependency graphs, codegen-migration helpers, and more. See [ROADMAP.md](ROADMAP.md) for the running list of ideas — contributions and votes welcome.
 
 ## Development
 

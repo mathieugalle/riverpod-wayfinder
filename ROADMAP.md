@@ -13,7 +13,6 @@ Riverpod Wayfinder currently does one thing well: reliable navigation from a pro
 
 ### Navigation & code intelligence (natural extensions of what this tool already does)
 
-- **Reverse jump / "Find provider usages"**: from a provider's declaration, list every `ref.watch(...)`, `ref.read(...)`, and `ref.listen(...)` call site across the workspace, grouped by kind. Regular "Find All References" on the class name doesn't do this cleanly, because the generated indirection means references to the *class* and references to the *provider identifier* are different symbols.
 - **CodeLens above provider declarations**: an inline "3 watch · 1 read · 1 listen" summary above each `@riverpod` declaration, clickable to jump straight to those call sites — the Riverpod-aware equivalent of the built-in "N references" CodeLens that codegen breaks.
 - **"Riverpod Doctor" workspace audit command**: a single command that scans the whole project and reports, in the Problems panel, things like orphaned `.g.dart` files (no matching source), missing `part` directives, duplicate provider names across files, and `.g.dart` files that are older than their source (stale codegen — you forgot to rerun `build_runner`).
 - **Convert to `ConsumerWidget` / "Wrap with Consumer" refactor**: an AST-aware code action that turns a `StatelessWidget` into a `ConsumerWidget` (base class, `ref` parameter, imports) or wraps a widget subtree in a `Consumer`, more robust than a static snippet since it operates on your actual code.
@@ -32,11 +31,10 @@ Riverpod Wayfinder currently does one thing well: reliable navigation from a pro
 
 ## Prioritization (rough)
 
-1. Reverse jump / find-usages — same codebase, same resolver, highest leverage for the least new surface area.
-2. "Riverpod Doctor" audit command — high value, no runtime/debug-adapter complexity.
-3. CodeLens usage counts — nice UX layer on top of (1).
-4. Convert-to-ConsumerWidget refactor — self-contained, doesn't depend on the others.
-5. Dependency graph / live state inspector — most valuable long-term, but a much bigger investment (webview, possibly a VM service / debug adapter connection).
-6. Migration assistant — valuable but scope-heavy; probably worth its own separate tool rather than a Wayfinder feature.
+1. "Riverpod Doctor" audit command — high value, no runtime/debug-adapter complexity.
+2. CodeLens usage counts — nice UX layer on top of the reverse-lookup resolver (now shipped, see [CHANGELOG.md](CHANGELOG.md)).
+3. Convert-to-ConsumerWidget refactor — self-contained, doesn't depend on the others.
+4. Dependency graph / live state inspector — most valuable long-term, but a much bigger investment (webview, possibly a VM service / debug adapter connection).
+5. Migration assistant — valuable but scope-heavy; probably worth its own separate tool rather than a Wayfinder feature.
 
 Have an opinion on ordering, or a pain point not listed here? Open an issue.

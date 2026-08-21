@@ -4,9 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   resolveProviderTarget,
+  resolveGeneratedProviderReference,
   findProviderForClassName,
+  findGeneratedProviderName,
+  findPairedGDartPath,
+  findWordOccurrences,
   findDeclarationLine,
   isDeclaredProviderIdentifier,
+  isGeneratedDartFile,
   toPascalCase,
   GDartCandidate,
 } from './resolver';
@@ -186,4 +191,88 @@ test('findDeclarationLine returns null when the class/function is not present', 
 test('toPascalCase converts a lowerCamelCase provider base name to a class name', () => {
   assert.equal(toPascalCase('viewFreshness'), 'ViewFreshness');
   assert.equal(toPascalCase('view_freshness'), 'ViewFreshness');
+});
+
+// --- Reverse direction: hand-written declaration -> generated provider name,
+// i.e. "who uses this?" (Find All References) starting from the @riverpod
+// annotation instead of from a provider usage.
+
+test('findPairedGDartPath resolves the part directive to an absolute .g.dart path', () => {
+  const sourcePath = path.join(FIXTURES_ROOT, 'weather.dart');
+  const content = fs.readFileSync(sourcePath, 'utf8');
+  assert.equal(findPairedGDartPath(content, sourcePath), path.join(FIXTURES_ROOT, 'weather.g.dart'));
+});
+
+test('findPairedGDartPath returns null when there is no part directive', () => {
+  assert.equal(findPairedGDartPath('void main() {}', path.join(FIXTURES_ROOT, 'weather.dart')), null);
+});
+
+test('findGeneratedProviderName finds the generated identifier for a FUNCTION-based FAMILY provider', () => {
+  const content = fs.readFileSync(path.join(FIXTURES_ROOT, 'weather.g.dart'), 'utf8');
+  const found = findGeneratedProviderName(content, 'weather');
+  assert.ok(found);
+  assert.equal(found!.name, 'weatherProvider');
+  assert.equal(content.slice(found!.offset, found!.offset + found!.name.length), 'weatherProvider');
+});
+
+test('findGeneratedProviderName picks the right identifier among multiple providers in one file', () => {
+  const content = fs.readFileSync(path.join(FIXTURES_ROOT, 'view_freshness.providers.g.dart'), 'utf8');
+  assert.equal(findGeneratedProviderName(content, 'ViewFreshness')?.name, 'viewFreshnessProvider');
+  assert.equal(findGeneratedProviderName(content, 'viewFreshnessScore')?.name, 'viewFreshnessScoreProvider');
+  assert.equal(findGeneratedProviderName(content, 'ViewFreshnessHistory')?.name, 'viewFreshnessHistoryProvider');
+});
+
+test('findGeneratedProviderName works for a generated identifier with no "Provider" suffix', () => {
+  const content = fs.readFileSync(path.join(FIXTURES_ROOT, 'auth_controller.g.dart'), 'utf8');
+  assert.equal(findGeneratedProviderName(content, 'AuthController')?.name, 'authController');
+});
+
+test('resolveGeneratedProviderReference resolves a FUNCTION-based FAMILY provider end to end', () => {
+  const sourcePath = path.join(FIXTURES_ROOT, 'weather.dart');
+  const sourceContent = fs.readFileSync(sourcePath, 'utf8');
+  const result = resolveGeneratedProviderReference(sourceContent, sourcePath, 'weather');
+  assert.ok(result);
+  assert.equal(result!.name, 'weatherProvider');
+  assert.equal(path.basename(result!.gDartPath), 'weather.g.dart');
+  assert.equal(lineAt(result!.gDartPath, result!.line).slice(result!.character), 'weatherProvider = WeatherFamily();');
+});
+
+test('resolveGeneratedProviderReference resolves a CLASS-based FAMILY provider end to end', () => {
+  const sourcePath = path.join(FIXTURES_ROOT, 'city_forecast.dart');
+  const sourceContent = fs.readFileSync(sourcePath, 'utf8');
+  const result = resolveGeneratedProviderReference(sourceContent, sourcePath, 'CityForecast');
+  assert.ok(result);
+  assert.equal(result!.name, 'cityForecastProvider');
+});
+
+test('resolveGeneratedProviderReference returns null for a class/function that is not @riverpod-annotated', () => {
+  const sourcePath = path.join(FIXTURES_ROOT, 'weather.dart');
+  const sourceContent = fs.readFileSync(sourcePath, 'utf8');
+  assert.equal(resolveGeneratedProviderReference(sourceContent, sourcePath, 'DoesNotExist'), null);
+});
+
+test('resolveGeneratedProviderReference returns null when the file has no part directive', () => {
+  assert.equal(
+    resolveGeneratedProviderReference('@riverpod\nint foo(Ref ref) => 1;', '/tmp/foo.dart', 'foo'),
+    null
+  );
+});
+
+test('isGeneratedDartFile identifies .g.dart paths and excludes plain .dart files', () => {
+  assert.equal(isGeneratedDartFile('/lib/weather.g.dart'), true);
+  assert.equal(isGeneratedDartFile('C:\\proj\\lib\\weather.g.dart'), true);
+  assert.equal(isGeneratedDartFile('/lib/weather.dart'), false);
+  assert.equal(isGeneratedDartFile('/lib/weather.freezed.dart'), false);
+});
+
+test('findWordOccurrences matches word-boundary occurrences across multiple files, not substrings', () => {
+  const results = findWordOccurrences('weatherProvider', [
+    { path: '/a.dart', content: 'final x = ref.watch(weatherProvider);\nfinal y = weatherProviderExtra;' },
+    { path: '/b.dart', content: '// see weatherProvider above\nref.watch(weatherProvider(city: "NYC"));' },
+  ]);
+  assert.equal(results.length, 3);
+  assert.deepEqual(
+    results.map((r) => r.filePath),
+    ['/a.dart', '/b.dart', '/b.dart']
+  );
 });
