@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder supprime ce détour. Il lit le fichier `.g.dart` à ta place,
 - Supporte `@riverpod class Foo extends _$Foo` et `@riverpod ReturnType foo(Ref ref)`.
 - Aucune convention de nommage de fichier requise — la correspondance se fait par contenu, donc `foo.providers.dart` / `foo.providers.g.dart` comme `foo.dart` / `foo.g.dart` fonctionnent.
 - Aucune convention de nommage de provider requise non plus — fonctionne que tes identifiants générés se terminent par `Provider`, `Controller`, ou autre chose selon la convention de ton équipe, partout où la génération `@riverpod` fonctionne elle-même.
-- Journalisation de débogage optionnelle (`riverpod-wayfinder.enableLogging`) montrant chaque décision de résolution.
+- **`Shift+F12` (Find All References)** sur une déclaration `@riverpod` écrite à la main — liste chaque utilisation du provider *généré* qu'elle produit ailleurs dans le workspace (les emplacements `.g.dart` ne sont jamais montrés). Privilégie les références de l'analyseur Dart quand elles sont disponibles, avec repli sur une recherche texte sinon.
+- Traçage détaillé de la résolution, étape par étape, dans le canal Output **"Riverpod Wayfinder"** pour le dépannage — voir [Dépannage](#dépannage) ci-dessous.
 
 ## Installation
 
@@ -43,7 +44,7 @@ Pas encore publiée sur un marketplace — récupère le `.vsix` depuis la page 
 Ou en ligne de commande :
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## Utilisation
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // et vi
 
 Si tu ne veux pas choisir à chaque fois, utilise **Go to Implementation** (`Ctrl+F12` / `Cmd+F12`) à la place — un geste séparé auquel l'extension Dart ne contribue pas, donc non contesté, et qui saute toujours directement vers la source.
 
+### Pourquoi `Shift+F12` ("Find All References") affiche-t-il parfois encore un emplacement `.g.dart` ?
+
+Même cause racine que la liste `Ctrl+Click` ci-dessus : VSCode agrège tous les `ReferenceProvider` enregistrés, et la contribution de Riverpod Wayfinder n'inclut jamais d'emplacement `.g.dart` — mais celle de l'extension Dart officielle le peut. Si ton code généré appelle réellement ton symbole écrit à la main (ce qui arrive généralement au moins une fois, par ex. `PackageMetrics create() => PackageMetrics();` dans le fichier généré d'un provider basé sur une classe), c'est une vraie référence du point de vue de Dart, et son `ReferenceProvider` la remonte correctement. Il n'existe aucun moyen supporté de filtrer la contribution d'une autre extension dans la liste fusionnée.
+
 ### Comment ça marche
 
 1. Trouve le fichier `.g.dart` contenant le provider cliqué
@@ -85,23 +90,27 @@ Si tu ne veux pas choisir à chaque fois, utilise **Go to Implementation** (`Ctr
 
 ## Prérequis
 
-- VSCode 1.60.0+ (fonctionne aussi dans les éditeurs basés sur VSCode comme Cursor)
+- VSCode 1.74.0+ (fonctionne aussi dans les éditeurs basés sur VSCode comme Cursor)
 - L'[extension Dart](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code) (pour la génération `.g.dart` et le support Dart au quotidien)
 
-## Paramètres
+## Dépannage
 
-| Paramètre | Défaut | Description |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | Journalise chaque décision de résolution (fichiers `.g.dart` candidats vérifiés, nom de classe/fonction inféré, ligne cible résolue) dans la console de débogage. |
+Riverpod Wayfinder journalise chaque décision de résolution (fichiers `.g.dart` candidats vérifiés, nom de classe/fonction inféré, ligne cible résolue, et toute erreur) dans son propre canal **"Riverpod Wayfinder"** du panneau Output :
+
+1. **View → Output**, puis choisis **"Riverpod Wayfinder"** dans le menu déroulant des canaux.
+2. Le traçage détaillé est masqué par défaut. Pour le voir, clique sur l'icône engrenage dans la barre d'outils de ce canal (ou lance **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"**) et règle le niveau sur **Debug** ou **Trace**.
+3. Les erreurs (un fichier illisible, un appel à l'analyseur qui échoue, ...) s'affichent toujours, quel que soit ce niveau.
 
 ## Problèmes connus
 
 - Dépend de la déclaration `part of` du fichier `.g.dart` pour trouver le fichier source — des configurations de génération de code inhabituelles peuvent ne pas se résoudre correctement.
 - L'inférence du nom de classe/fonction utilise une heuristique de casse (première lettre majuscule → classe, minuscule → fonction) ; du code qui ne respecte pas les conventions de nommage Dart peut mal se résoudre.
+- `Shift+F12` peut encore afficher un emplacement `.g.dart` apporté par l'extension Dart elle-même — voir la FAQ ci-dessus, ce n'est pas quelque chose que cette extension peut supprimer.
+- Le repli en recherche texte de `Shift+F12` (utilisé quand l'analyseur Dart ne renvoie aucun résultat) est une simple correspondance par mot entier — il ne peut pas distinguer une vraie utilisation d'un nom identique dans un commentaire ou une chaîne de caractères.
 
 ## Feuille de route
 
-Cette extension se concentre sur une seule chose — une navigation fiable — mais il reste beaucoup de frictions Riverpod qu'aucune extension existante ne couvre bien pour l'instant : recherche inversée des utilisations d'un provider, commande de diagnostic de projet, graphes de dépendances, aide à la migration de code généré, et plus encore. Voir [ROADMAP.md](ROADMAP.md) pour la liste des idées — contributions et votes bienvenus.
+Cette extension se concentre sur une seule chose — une navigation fiable — mais il reste beaucoup de frictions Riverpod qu'aucune extension existante ne couvre bien pour l'instant : commande de diagnostic de projet, graphes de dépendances, aide à la migration de code généré, et plus encore. Voir [ROADMAP.md](ROADMAP.md) pour la liste des idées — contributions et votes bienvenus.
 
 ## Développement
 

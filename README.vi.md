@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder loại bỏ khúc quanh đó. Nó đọc file `.g.dart` thay 
 - Hỗ trợ cả `@riverpod class Foo extends _$Foo` và `@riverpod ReturnType foo(Ref ref)`.
 - Không yêu cầu quy ước đặt tên file — khớp theo nội dung, nên cả `foo.providers.dart` / `foo.providers.g.dart` lẫn `foo.dart` / `foo.g.dart` thông thường đều hoạt động.
 - Cũng không yêu cầu quy ước đặt tên provider — hoạt động dù định danh được sinh ra kết thúc bằng `Provider`, `Controller`, hay bất kỳ hậu tố nào nhóm bạn dùng, ở bất cứ đâu mà codegen `@riverpod` hoạt động.
-- Ghi log gỡ lỗi tùy chọn (`riverpod-wayfinder.enableLogging`) hiển thị mọi quyết định phân giải.
+- **`Shift+F12` (Find All References)** trên một khai báo `@riverpod` viết tay — liệt kê mọi nơi sử dụng provider *được sinh ra* mà nó tạo ra, ở khắp workspace (không bao giờ hiển thị vị trí `.g.dart`). Ưu tiên dùng chính các tham chiếu của Dart analyzer khi có thể, nếu không sẽ chuyển sang quét văn bản.
+- Ghi log truy vết phân giải từng bước vào **kênh Output "Riverpod Wayfinder"** để gỡ lỗi — xem [Khắc phục sự cố](#khắc-phục-sự-cố) bên dưới.
 
 ## Cài đặt
 
@@ -43,7 +44,7 @@ Chưa được xuất bản lên marketplace nào — tải `.vsix` từ trang [
 Hoặc từ dòng lệnh:
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## Cách sử dụng
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // và v
 
 Nếu bạn không muốn chọn mỗi lần, hãy dùng **Go to Implementation** (`Ctrl+F12` / `Cmd+F12`) — một thao tác riêng biệt mà tiện ích Dart không tham gia, nên không có cạnh tranh, và luôn nhảy thẳng đến mã nguồn viết tay.
 
+### Vì sao `Shift+F12` ("Find All References") đôi khi vẫn hiện một vị trí `.g.dart`?
+
+Cùng nguyên nhân gốc rễ như danh sách chọn `Ctrl+Click` ở trên: VSCode tổng hợp mọi `ReferenceProvider` đã đăng ký, và đóng góp của chính Riverpod Wayfinder không bao giờ bao gồm vị trí `.g.dart` — nhưng đóng góp của tiện ích Dart chính thức thì có thể. Nếu mã được sinh ra thực sự gọi ngược lại ký hiệu viết tay của bạn (điều này thường xảy ra ít nhất một lần, ví dụ `PackageMetrics create() => PackageMetrics();` trong file sinh ra của một provider dựa trên class), thì đó là một tham chiếu thật sự theo góc nhìn của Dart, và `ReferenceProvider` của Dart báo cáo nó một cách chính xác. Không có cách nào được hỗ trợ để lọc bỏ đóng góp của một tiện ích khác khỏi danh sách đã gộp.
+
 ### Cách hoạt động
 
 1. Tìm file `.g.dart` chứa provider đã nhấp
@@ -85,23 +90,27 @@ Nếu bạn không muốn chọn mỗi lần, hãy dùng **Go to Implementation*
 
 ## Yêu cầu
 
-- VSCode 1.60.0 trở lên (cũng hoạt động trong các trình soạn thảo dựa trên VSCode như Cursor)
+- VSCode 1.74.0 trở lên (cũng hoạt động trong các trình soạn thảo dựa trên VSCode như Cursor)
 - [Tiện ích Dart](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code) (để sinh `.g.dart` và hỗ trợ Dart hàng ngày)
 
-## Cài đặt (Settings)
+## Khắc phục sự cố
 
-| Cài đặt | Mặc định | Mô tả |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | Ghi log mọi quyết định phân giải (các file `.g.dart` ứng viên đã kiểm tra, tên class/hàm được suy luận, dòng đích đã phân giải) vào Debug Console. |
+Riverpod Wayfinder ghi log mọi quyết định phân giải (các file `.g.dart` ứng viên đã kiểm tra, tên class/hàm được suy luận, dòng đích đã phân giải, và mọi lỗi) vào kênh riêng **"Riverpod Wayfinder"** trong bảng Output:
+
+1. Mở **View → Output**, rồi chọn **"Riverpod Wayfinder"** trong danh sách kênh thả xuống.
+2. Truy vết từng bước mặc định bị ẩn. Để xem, nhấp vào biểu tượng bánh răng trên thanh công cụ của kênh đó (hoặc chạy **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"**) rồi đặt mức thành **Debug** hoặc **Trace**.
+3. Lỗi (một file không đọc được, một lần gọi analyzer thất bại, ...) luôn hiển thị, bất kể mức đó.
 
 ## Vấn đề đã biết
 
 - Phụ thuộc vào câu lệnh `part of` trong file `.g.dart` để tìm file nguồn — các thiết lập sinh mã khác thường có thể không phân giải được.
 - Việc suy luận tên class/hàm dùng một heuristic dựa trên chữ hoa/thường (chữ cái đầu viết hoa → class, viết thường → hàm); mã viết tay không theo quy ước đặt tên của Dart có thể không phân giải chính xác.
+- `Shift+F12` vẫn có thể hiện một vị trí `.g.dart` do chính tiện ích Dart đóng góp — xem FAQ ở trên, đây không phải điều tiện ích này có thể ngăn được.
+- Cơ chế quét văn bản dự phòng của `Shift+F12` (dùng khi Dart analyzer không trả về kết quả nào) chỉ là khớp theo ranh giới từ đơn giản — nó không thể phân biệt một lần sử dụng thật với một cái tên trùng khớp nằm trong comment hay chuỗi ký tự.
 
 ## Lộ trình
 
-Tiện ích này tập trung vào một việc — điều hướng đáng tin cậy — nhưng còn rất nhiều điểm gây khó chịu khác của Riverpod mà chưa tiện ích nào giải quyết tốt: tìm ngược tất cả nơi watch/read một provider, lệnh kiểm tra sức khỏe toàn workspace, đồ thị phụ thuộc, công cụ hỗ trợ di chuyển mã sinh tự động, và nhiều hơn nữa. Xem [ROADMAP.md](ROADMAP.md) để biết danh sách ý tưởng đang được theo dõi — hoan nghênh đóng góp và bình chọn.
+Tiện ích này tập trung vào một việc — điều hướng đáng tin cậy — nhưng còn rất nhiều điểm gây khó chịu khác của Riverpod mà chưa tiện ích nào giải quyết tốt: lệnh kiểm tra sức khỏe toàn workspace, đồ thị phụ thuộc, công cụ hỗ trợ di chuyển mã sinh tự động, và nhiều hơn nữa. Xem [ROADMAP.md](ROADMAP.md) để biết danh sách ý tưởng đang được theo dõi — hoan nghênh đóng góp và bình chọn.
 
 ## Phát triển
 

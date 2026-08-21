@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder 消除了这个绕路。它替你读取 `.g.dart` 文件，�
 - 同时支持 `@riverpod class Foo extends _$Foo` 和 `@riverpod ReturnType foo(Ref ref)`。
 - 无需遵循文件命名约定——按内容匹配，因此 `foo.providers.dart` / `foo.providers.g.dart` 和普通的 `foo.dart` / `foo.g.dart` 都能正常工作。
 - 也无需遵循 provider 命名约定——无论生成的标识符以 `Provider`、`Controller` 结尾，还是你团队自定义的任何后缀，只要 `@riverpod` 代码生成本身能工作的地方，它就能工作。
-- 可选的调试日志（`riverpod-wayfinder.enableLogging`），显示每一步解析决策。
+- **`Shift+F12`（Find All References）**——在手写的 `@riverpod` 声明上使用时，会列出它所生成的 provider 在工作区中的每一处用法（绝不会显示 `.g.dart` 位置）。有可用结果时优先使用 Dart 分析器自身的引用，否则回退到文本扫描。
+- 在 **"Riverpod Wayfinder" Output 频道**中输出逐步解析追踪日志，便于排查问题——详见下方[故障排查](#故障排查)。
 
 ## 安装
 
@@ -43,7 +44,7 @@ Riverpod Wayfinder 消除了这个绕路。它替你读取 `.g.dart` 文件，�
 或通过命令行：
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## 使用方法
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // viewF
 
 如果你不想每次都要选择，可以改用 **Go to Implementation**（`Ctrl+F12` / `Cmd+F12`）——这是一个 Dart 扩展没有介入的独立手势，因此不存在竞争，总是直接跳转到手写源代码。
 
+### 为什么 `Shift+F12`("Find All References") 有时仍会显示一个 `.g.dart` 位置？
+
+与上面 `Ctrl+Click` 选择列表的根本原因相同：VSCode 会汇总所有已注册的 `ReferenceProvider`，Riverpod Wayfinder 自身的贡献绝不会包含 `.g.dart` 位置——但官方 Dart 扩展的贡献可能会。如果生成的代码确实反过来调用了你手写的符号(这种情况通常至少会发生一次，例如某个基于类的 provider 生成文件中的 `PackageMetrics create() => PackageMetrics();`)，从 Dart 的角度看这就是一个真实的引用，Dart 的 `ReferenceProvider` 会正确地报告它。没有受支持的方法可以从合并后的列表中过滤掉另一个扩展的贡献。
+
 ### 工作原理
 
 1. 找到包含所点击 provider 的 `.g.dart` 文件
@@ -85,23 +90,27 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // viewF
 
 ## 环境要求
 
-- VSCode 1.60.0 及以上（也适用于 Cursor 等基于 VSCode 的编辑器）
+- VSCode 1.74.0 及以上（也适用于 Cursor 等基于 VSCode 的编辑器）
 - [Dart 扩展](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code)（用于 `.g.dart` 生成及日常 Dart 支持）
 
-## 设置
+## 故障排查
 
-| 设置项 | 默认值 | 说明 |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | 将每一步解析决策（检查过的候选 `.g.dart` 文件、推断出的类/函数名、解析出的目标行）记录到调试控制台。 |
+Riverpod Wayfinder 会把每一步解析决策（检查过的候选 `.g.dart` 文件、推断出的类/函数名、解析出的目标行，以及任何错误）记录到它自己的 **"Riverpod Wayfinder"** 频道中，位于 Output 面板：
+
+1. 打开 **View → Output**，然后在频道下拉菜单中选择 **"Riverpod Wayfinder"**。
+2. 逐步追踪日志默认是隐藏的。要查看它，点击该频道工具栏上的齿轮图标（或运行 **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"**），把级别设为 **Debug** 或 **Trace**。
+3. 错误信息（读取失败的文件、失败的分析器调用等）无论该级别如何都始终显示。
 
 ## 已知问题
 
 - 依赖 `.g.dart` 文件中的 `part of` 语句来找到源文件——不寻常的代码生成配置可能无法解析。
 - 类/函数名推断使用大小写启发式规则（首字母大写→类，小写→函数）；不遵循 Dart 命名约定的手写代码可能无法正确解析。
+- `Shift+F12` 仍可能显示由 Dart 扩展自身贡献的 `.g.dart` 位置——见上方 FAQ，这不是本扩展能够抑制的。
+- `Shift+F12` 的文本扫描回退方式（在 Dart 分析器没有返回结果时使用）只是简单的单词边界匹配——它无法区分真实用法和注释或字符串字面量中恰好同名的内容。
 
 ## 路线图
 
-这个扩展专注于一件事——可靠的导航——但 Riverpod 还有很多摩擦点，目前没有任何扩展很好地解决：provider 使用位置的反向查找、工作区健康检查命令、依赖关系图、代码生成迁移辅助工具等等。完整的想法列表见 [ROADMAP.md](ROADMAP.md)——欢迎贡献和投票。
+这个扩展专注于一件事——可靠的导航——但 Riverpod 还有很多摩擦点，目前没有任何扩展很好地解决：工作区健康检查命令、依赖关系图、代码生成迁移辅助工具等等。完整的想法列表见 [ROADMAP.md](ROADMAP.md)——欢迎贡献和投票。
 
 ## 开发
 
