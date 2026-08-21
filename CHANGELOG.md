@@ -11,6 +11,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Fixture and unit test proving resolution works with a completely arbitrary, made-up suffix (`widgetToto`, ending in `"Toto"`) — not just `"Provider"` or `"Controller"` — confirming no suffix is hardcoded anywhere in the resolver.
 - Fixtures and unit tests validating **family (parameterized) providers**, both function-based (`@riverpod Future<String> weather(Ref ref, {required String city})`) and class-based (`@riverpod class CityForecast extends _$CityForecast { build(String city) }`). Family providers generate a different shape (`const xProvider = XFamily();` pointing at a wrapper class, instead of the plain `final xProvider = ...Provider<...>.internal(...)`) - confirmed working without any special-casing, plus a regression test guarding against the generated `XFamily`/`XProvider` wrapper class names being confused with the real (differently-cased) provider constant.
 
+## [0.2.2]
+
+### Fixed
+
+- **`findFiles('**/*.g.dart')` was silently returning zero results in any workspace that excludes `.g.dart` from `files.exclude`** (a common setup for generated Dart files, including this project's own `.vscode/settings.json`). VSCode's `findFiles` applies the workspace's default excludes unless told otherwise, so the extension found no `.g.dart` files, and `jumpToRiverpodOrigin` silently returned `null` everywhere - no error, no log, just "go to definition" doing nothing. Fixed by passing `null` as the second argument to disable default excludes.
+
 ## [0.2.1]
 
 ### Changed

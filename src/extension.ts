@@ -39,7 +39,9 @@ async function jumpToRiverpodOrigin(
     return null;
   }
 
-  const gDartUris = await vscode.workspace.findFiles('**/*.g.dart');
+  // Explicit `null` disables default excludes (files.exclude), which many Dart/Riverpod
+  // workspaces use to hide generated .g.dart files - without it, findFiles silently finds none.
+  const gDartUris = await vscode.workspace.findFiles('**/*.g.dart', null);
   log(`Found ${gDartUris.length} .g.dart file(s) in the workspace.`);
 
   const candidates: GDartCandidate[] = gDartUris.map((uri) => ({

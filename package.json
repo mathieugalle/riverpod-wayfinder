@@ -3,7 +3,7 @@
   "displayName": "Riverpod Wayfinder",
   "publisher": "mathieugalle",
   "description": "Jump straight from a Riverpod provider usage (e.g. xxxProvider) to the hand-written class or function you actually wrote - not the generated .g.dart file. Handles files with multiple providers correctly.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/mathieugalle/riverpod-wayfinder.git"
