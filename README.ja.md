@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder はこの寄り道をなくします。`.g.dart` ファイル
 - `@riverpod class Foo extends _$Foo` と `@riverpod ReturnType foo(Ref ref)` の両方に対応。
 - ファイル名の命名規則は不要 — 内容で一致を判定するため、`foo.providers.dart` / `foo.providers.g.dart` でも通常の `foo.dart` / `foo.g.dart` でも動作します。
 - プロバイダーの命名規則も不要 — 生成される識別子が `Provider` で終わっても `Controller` で終わっても、チーム独自の命名でも、`@riverpod` によるコード生成が機能する場所であればどこでも動作します。
-- 各解決ステップを表示するオプションのデバッグログ（`riverpod-wayfinder.enableLogging`）。
+- **`Shift+F12`（Find All References）** — 手書きの `@riverpod` 宣言の上で使うと、それが生成する*プロバイダー*のワークスペース内の利用箇所をすべて一覧表示します（`.g.dart` の場所は表示されません）。利用可能な場合は Dart アナライザー自身の参照を優先し、そうでなければテキスト検索にフォールバックします。
+- ステップごとの解決ログを **"Riverpod Wayfinder" Output チャンネル** に出力します — 詳細は下記の[トラブルシューティング](#トラブルシューティング)を参照してください。
 
 ## インストール
 
@@ -43,7 +44,7 @@ Riverpod Wayfinder はこの寄り道をなくします。`.g.dart` ファイル
 またはコマンドラインから：
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## 使い方
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // viewF
 
 毎回選びたくない場合は、代わりに **Go to Implementation**（`Ctrl+F12` / `Cmd+F12`）を使ってください — Dart 拡張機能が関与しない別の操作方法なので競合がなく、常に手書きソースへ直接ジャンプします。
 
+### なぜ `Shift+F12`（"Find All References"）で `.g.dart` の場所が表示されることがあるのですか？
+
+上記の `Ctrl+Click` の選択リストと同じ根本原因です。VSCode は登録されているすべての `ReferenceProvider` を集約しますが、Riverpod Wayfinder 自身の貢献に `.g.dart` の場所が含まれることは決してありません — しかし公式 Dart 拡張機能の貢献には含まれることがあります。生成されたコードが実際に手書きのシンボルを呼び出している場合（クラスベースのプロバイダーの生成ファイルにある `PackageMetrics create() => PackageMetrics();` のように、たいてい少なくとも1回はそうなります）、それは Dart から見て本物の参照であり、Dart の `ReferenceProvider` はそれを正しく報告します。マージされたリストから他の拡張機能の貢献だけを取り除く、サポートされた方法はありません。
+
 ### 仕組み
 
 1. クリックされたプロバイダーを含む `.g.dart` ファイルを見つける
@@ -85,23 +90,27 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // viewF
 
 ## 必要条件
 
-- VSCode 1.60.0 以上（Cursor など VSCode ベースのエディタでも動作）
+- VSCode 1.74.0 以上（Cursor など VSCode ベースのエディタでも動作）
 - [Dart 拡張機能](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code)（`.g.dart` の生成と日常的な Dart サポートのため）
 
-## 設定
+## トラブルシューティング
 
-| 設定 | デフォルト | 説明 |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | 各解決ステップ（確認した候補 `.g.dart` ファイル、推測されたクラス/関数名、解決された対象行）をデバッグコンソールに記録します。 |
+Riverpod Wayfinder は各解決ステップ（確認した候補 `.g.dart` ファイル、推測されたクラス/関数名、解決された対象行、およびすべてのエラー）を、専用の **"Riverpod Wayfinder"** チャンネルとして Output パネルに記録します：
+
+1. **View → Output** を開き、チャンネルのドロップダウンから **"Riverpod Wayfinder"** を選びます。
+2. ステップごとの詳細なログはデフォルトでは非表示です。表示するには、そのチャンネルのツールバーにある歯車アイコンをクリックするか（または **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"** を実行し）、レベルを **Debug** または **Trace** に設定してください。
+3. エラー（読み込めなかったファイル、失敗したアナライザー呼び出しなど）は、そのレベルに関係なく常に表示されます。
 
 ## 既知の問題
 
 - ソースファイルを見つけるために `.g.dart` ファイルの `part of` 文に依存しています — 特殊なコード生成設定では解決できない場合があります。
 - クラス/関数名の推測には大文字小文字のヒューリスティック（先頭が大文字ならクラス、小文字なら関数）を使用しています。Dart の命名規則に従わないコードは正しく解決されない場合があります。
+- `Shift+F12` は、Dart 拡張機能自身がもたらす `.g.dart` の場所を今でも表示することがあります — 上記の FAQ を参照してください。これはこの拡張機能では抑制できません。
+- `Shift+F12` のテキスト検索フォールバック（Dart アナライザーが結果を返さなかった場合に使用）は単純な単語境界一致であり、コメントや文字列リテラル内の同名の文字列と実際の利用箇所を区別できません。
 
 ## ロードマップ
 
-この拡張機能は「信頼できるナビゲーション」という1つのことに集中していますが、既存の拡張機能ではまだうまくカバーされていない Riverpod の摩擦は他にもたくさんあります：プロバイダーの逆引き検索、プロジェクトの健全性チェックコマンド、依存関係グラフ、コード生成移行の支援などです。アイデアの一覧は [ROADMAP.md](ROADMAP.md) を参照してください — コントリビューションや投票を歓迎します。
+この拡張機能は「信頼できるナビゲーション」という1つのことに集中していますが、既存の拡張機能ではまだうまくカバーされていない Riverpod の摩擦は他にもたくさんあります：プロジェクトの健全性チェックコマンド、依存関係グラフ、コード生成移行の支援などです。アイデアの一覧は [ROADMAP.md](ROADMAP.md) を参照してください — コントリビューションや投票を歓迎します。
 
 ## 開発
 

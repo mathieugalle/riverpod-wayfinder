@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![100% Free & Open Source](https://img.shields.io/badge/100%25-free%20%26%20open%20source-blue)](LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.60.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
 
 [English](README.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [中文（简体）](README.zh-CN.md) · [中文（繁體）](README.zh-TW.md) · [Tiếng Việt](README.vi.md) · [فارسی](README.fa.md) · [Azərbaycan](README.az.md)
 
@@ -31,7 +31,8 @@ Riverpod Wayfinder bu yan yolu aradan qaldırır. Sizin əvəzinizə `.g.dart` f
 - Həm `@riverpod class Foo extends _$Foo`, həm də `@riverpod ReturnType foo(Ref ref)` dəstəklənir.
 - Fayl adlandırma qaydası tələb olunmur — məzmuna görə uyğunlaşdırır, ona görə `foo.providers.dart` / `foo.providers.g.dart` və adi `foo.dart` / `foo.g.dart` hər ikisi işləyir.
 - Provider adlandırma qaydası da tələb olunmur — yaradılan identifikatorlar `Provider` ilə, `Controller` ilə, ya da komandanızın istifadə etdiyi istənilən başqa sonluqla bitsin, `@riverpod` kod generasiyasının özünün işlədiyi hər yerdə işləyir.
-- Hər həll qərarını göstərən istəyə bağlı debug qeydiyyatı (`riverpod-wayfinder.enableLogging`).
+- **`Shift+F12` (Find All References)** əl ilə yazdığınız `@riverpod` elanı üzərində — onun yaratdığı *generasiya olunmuş* provider-in workspace daxilindəki bütün istifadə yerlərini sadalayır (`.g.dart` yerləri heç vaxt göstərilmir). Mümkün olduqda Dart analizatorunun öz istinadlarına üstünlük verir, əks halda mətn axtarışına keçir.
+- Problemləri həll etmək üçün addım-addım analiz izləməsini **"Riverpod Wayfinder" Output kanalına** yazır — aşağıda [Problemlərin həlli](#problemlərin-həlli) bölməsinə baxın.
 
 ## Quraşdırma
 
@@ -43,7 +44,7 @@ Hələ heç bir marketpleysdə dərc olunmayıb — [Releases](../../releases) s
 Və ya komanda sətrindən:
 
 ```bash
-code --install-extension riverpod-wayfinder-0.1.1.vsix
+code --install-extension riverpod-wayfinder-0.3.0.vsix
 ```
 
 ## İstifadə qaydası
@@ -76,6 +77,10 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // və v
 
 Əgər hər dəfə seçim etmək istəmirsinizsə, əvəzinə **Go to Implementation** (`Ctrl+F12` / `Cmd+F12`) istifadə edin — Dart genişlənməsinin iştirak etmədiyi ayrı bir jest, ona görə rəqabət yoxdur və həmişə birbaşa əl ilə yazılmış mənbəyə keçir.
 
+### Niyə `Shift+F12` ("Find All References") bəzən hələ də `.g.dart` yerini göstərir?
+
+Yuxarıdakı `Ctrl+Click` seçim siyahısı ilə eyni kök səbəb: VSCode qeydiyyatdan keçmiş bütün `ReferenceProvider`-ləri cəmləyir, və Riverpod Wayfinder-in öz töhfəsinə heç vaxt `.g.dart` yeri daxil olmur — lakin rəsmi Dart genişlənməsinin töhfəsinə daxil ola bilər. Əgər generasiya olunmuş kod həqiqətən əl ilə yazdığınız simvolu geri çağırırsa (bu adətən ən azı bir dəfə baş verir, məsələn sinif əsaslı bir provider-in generasiya olunmuş faylındakı `PackageMetrics create() => PackageMetrics();`), bu, Dart baxımından həqiqi bir istinaddır və Dart-ın `ReferenceProvider`-i bunu düzgün bildirir. Birləşdirilmiş siyahıdan başqa bir genişlənmənin töhfəsini süzgəcdən keçirməyin dəstəklənən heç bir yolu yoxdur.
+
 ### Necə işləyir
 
 1. Klikləndiyiniz provider-i ehtiva edən `.g.dart` faylını tapır
@@ -85,23 +90,27 @@ class ViewFreshnessHistory extends _$ViewFreshnessHistory { /* ... */ } // və v
 
 ## Tələblər
 
-- VSCode 1.60.0 və ya daha yüksək versiya (Cursor kimi VSCode əsaslı redaktorlarda da işləyir)
+- VSCode 1.74.0 və ya daha yüksək versiya (Cursor kimi VSCode əsaslı redaktorlarda da işləyir)
 - [Dart genişlənməsi](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code) (`.g.dart` generasiyası və gündəlik Dart dəstəyi üçün)
 
-## Parametrlər
+## Problemlərin həlli
 
-| Parametr | Standart | Təsvir |
-|---|---|---|
-| `riverpod-wayfinder.enableLogging` | `false` | Hər həll qərarını (yoxlanılan namizəd `.g.dart` faylları, təxmin edilən sinif/funksiya adı, həll olunmuş hədəf sətir) Debug Console-a qeyd edir. |
+Riverpod Wayfinder hər həll qərarını (yoxlanılan namizəd `.g.dart` faylları, təxmin edilən sinif/funksiya adı, həll olunmuş hədəf sətir və hər hansı xəta) Output panelindəki öz **"Riverpod Wayfinder"** kanalına yazır:
+
+1. **View → Output** açın, sonra kanal siyahısından **"Riverpod Wayfinder"**-i seçin.
+2. Addım-addım izləmə standart olaraq gizlidir. Onu görmək üçün həmin kanalın alət çubuğundakı dişli çarx ikonuna klikləyin (və ya **"Developer: Set Log Level..."** → **"Riverpod Wayfinder"** işə salın) və səviyyəni **Debug** və ya **Trace**-ə qoyun.
+3. Xətalar (oxuna bilməyən fayl, uğursuz analizator çağırışı və s.) bu səviyyədən asılı olmayaraq həmişə göstərilir.
 
 ## Məlum problemlər
 
 - Mənbə faylını tapmaq üçün `.g.dart` faylının `part of` ifadəsindən asılıdır — qeyri-adi kod generasiyası quraşdırmaları həll olunmaya bilər.
 - Sinif/funksiya adının təxmin edilməsi böyük/kiçik hərf evristikasından istifadə edir (böyük hərflə başlayan → sinif, kiçik hərflə → funksiya); Dart adlandırma qaydalarına uyğun olmayan kod düzgün həll olunmaya bilər.
+- `Shift+F12` hələ də Dart genişlənməsinin özünün gətirdiyi bir `.g.dart` yerini göstərə bilər — yuxarıdakı FAQ-a baxın, bu, bu genişlənmənin idarə edə biləcəyi bir şey deyil.
+- `Shift+F12`-nin mətn axtarışı ehtiyat üsulu (Dart analizatoru heç bir nəticə qaytarmadıqda istifadə olunur) sadəcə sözün sərhədinə görə uyğunlaşdırmadır — o, real istifadəni şərh və ya mətn sətri daxilindəki eyni adlı bir şeydən ayıra bilmir.
 
 ## Yol xəritəsi
 
-Bu genişlənmə bir şeyə — etibarlı naviqasiyaya — fokuslanıb, lakin heç bir mövcud genişlənmənin hələ yaxşı əhatə etmədiyi çoxlu Riverpod problemi var: provider-in bütün watch/read yerlərinin əks axtarışı, workspace sağlamlıq yoxlaması əmri, asılılıq qrafikləri, kod generasiyası miqrasiya köməkçiləri və s. Fikirlərin tam siyahısı üçün [ROADMAP.md](ROADMAP.md) sənədinə baxın — töhfələr və səsvermə xoş qarşılanır.
+Bu genişlənmə bir şeyə — etibarlı naviqasiyaya — fokuslanıb, lakin heç bir mövcud genişlənmənin hələ yaxşı əhatə etmədiyi çoxlu Riverpod problemi var: workspace sağlamlıq yoxlaması əmri, asılılıq qrafikləri, kod generasiyası miqrasiya köməkçiləri və s. Fikirlərin tam siyahısı üçün [ROADMAP.md](ROADMAP.md) sənədinə baxın — töhfələr və səsvermə xoş qarşılanır.
 
 ## İnkişaf
 
