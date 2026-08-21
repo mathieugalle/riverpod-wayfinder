@@ -1,0 +1,51 @@
+name: Release
+
+# Triggered only by pushing a tag like "v0.2.2" - never by a plain commit/push to
+# a branch. Creates a GitHub Release with notes pulled from CHANGELOG.md and
+# attaches the packaged .vsix as a downloadable asset.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run compile
+
+      - name: Package extension
+        run: npx vsce package
+
+      - name: Extract this version's CHANGELOG section
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "No CHANGELOG.md section found for [$VERSION] - add one before tagging." >&2
+            exit 1
+          fi
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          files: "*.vsix"
